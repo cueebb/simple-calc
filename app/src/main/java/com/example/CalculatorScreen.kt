@@ -15,13 +15,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material3.AlertDialog
@@ -89,6 +94,7 @@ fun CalculatorScreen(
   val uiState by viewModel.uiState.collectAsStateWithLifecycle()
   val haptic = LocalHapticFeedback.current
   var showSettingsDialog by remember { mutableStateOf(false) }
+  var showHistoryDialog by remember { mutableStateOf(false) }
 
   Surface(
     modifier = modifier
@@ -101,46 +107,61 @@ fun CalculatorScreen(
         .fillMaxSize()
         .statusBarsPadding()
         .navigationBarsPadding()
-        .padding(horizontal = 12.dp, vertical = 6.dp),
-      verticalArrangement = Arrangement.Bottom
+        .padding(vertical = 4.dp),
+      verticalArrangement = Arrangement.SpaceBetween
     ) {
-      // Top header bar with Settings button in upper left corner
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(bottom = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+      // Top section containing corner buttons and full-width display directly below
+      Column(
+        modifier = Modifier.fillMaxWidth()
       ) {
-        IconButton(
-          onClick = { showSettingsDialog = true },
-          modifier = Modifier.testTag("btn_settings")
+        // Top header bar: Settings assigned to top-left corner, History assigned to top-right corner
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically
         ) {
-          Icon(
-            imageVector = Icons.Outlined.Settings,
-            contentDescription = "Settings",
-            tint = GoogleCalcFormulaText
-          )
+          IconButton(
+            onClick = { showSettingsDialog = true },
+            modifier = Modifier.testTag("btn_settings")
+          ) {
+            Icon(
+              imageVector = Icons.Outlined.Settings,
+              contentDescription = "Settings",
+              tint = GoogleCalcFormulaText
+            )
+          }
+          IconButton(
+            onClick = { showHistoryDialog = true },
+            modifier = Modifier.testTag("btn_history")
+          ) {
+            Icon(
+              imageVector = Icons.Outlined.History,
+              contentDescription = "History",
+              tint = GoogleCalcFormulaText
+            )
+          }
         }
-        // Upper right corner remains blank as requested
-        Spacer(modifier = Modifier.size(48.dp))
+
+        // Display Area (number field) placed right under the history button, occupying full screen width
+        DisplaySection(
+          displayText = uiState.displayText,
+          formulaText = uiState.formulaText,
+          onSwipeDelete = {
+            performHaptic(haptic, uiState.isVibrationEnabled, HapticFeedbackType.LongPress)
+            viewModel.onSwipeDelete()
+          },
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+        )
       }
 
-      Spacer(modifier = Modifier.weight(1f, fill = false))
+      // Blank space positioned under the number field and above the keypad
+      Spacer(modifier = Modifier.weight(1f))
 
-      // Display Area with horizontal swipe-to-delete
-      DisplaySection(
-        displayText = uiState.displayText,
-        formulaText = uiState.formulaText,
-        onSwipeDelete = {
-          performHaptic(haptic, uiState.isVibrationEnabled, HapticFeedbackType.LongPress)
-          viewModel.onSwipeDelete()
-        }
-      )
-
-      Spacer(modifier = Modifier.height(10.dp))
-
-      // Keypad Section (occupying 100% of the screen width)
+      // Keypad Section (occupying 100% of the screen width at bottom)
       KeypadSection(
         uiState = uiState,
         onDigit = { digit ->
@@ -166,7 +187,10 @@ fun CalculatorScreen(
         onClear = {
           performHaptic(haptic, uiState.isVibrationEnabled, HapticFeedbackType.LongPress)
           viewModel.onClear()
-        }
+        },
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(start = 12.dp, end = 12.dp, bottom = 6.dp)
       )
     }
 
@@ -175,6 +199,15 @@ fun CalculatorScreen(
         isVibrationEnabled = uiState.isVibrationEnabled,
         onVibrationChanged = { viewModel.setVibrationEnabled(it) },
         onDismiss = { showSettingsDialog = false }
+      )
+    }
+
+    if (showHistoryDialog) {
+      HistoryDialog(
+        history = uiState.history,
+        onSelectHistory = { item -> viewModel.onSelectHistoryItem(item) },
+        onClearHistory = { viewModel.onClearHistory() },
+        onDismiss = { showHistoryDialog = false }
       )
     }
   }
@@ -211,11 +244,12 @@ private fun DisplaySection(
   var dragConsumed by remember { mutableStateOf(false) }
 
   val fontSize: TextUnit = when {
-    displayText.length <= 6 -> 68.sp
-    displayText.length <= 8 -> 54.sp
+    displayText.length <= 6 -> 72.sp
+    displayText.length <= 8 -> 56.sp
     displayText.length <= 10 -> 44.sp
     displayText.length <= 12 -> 34.sp
-    else -> 26.sp
+    displayText.length <= 15 -> 28.sp
+    else -> 22.sp
   }
 
   Column(
@@ -247,10 +281,9 @@ private fun DisplaySection(
             }
           }
         )
-      }
-      .padding(horizontal = 6.dp, vertical = 2.dp),
+      },
     horizontalAlignment = Alignment.End,
-    verticalArrangement = Arrangement.Bottom
+    verticalArrangement = Arrangement.Top
   ) {
     // Formula / secondary line
     if (formulaText.isNotEmpty()) {
@@ -295,14 +328,14 @@ private fun KeypadSection(
   onOperator: (Operator) -> Unit,
   onEquals: () -> Unit,
   onToggleSign: () -> Unit,
-  onClear: () -> Unit
+  onClear: () -> Unit,
+  modifier: Modifier = Modifier
 ) {
   val clearLabel = if (uiState.isAllClear) "AC" else "C"
 
   BoxWithConstraints(
-    modifier = Modifier
+    modifier = modifier
       .fillMaxWidth()
-      .padding(bottom = 4.dp)
   ) {
     val spacing: Dp = 10.dp
     // 4 columns: exactly 3 gaps, guaranteed to take 100% of the screen width
@@ -685,6 +718,137 @@ private fun SettingsDialog(
       ) {
         Text(
           text = "Done",
+          color = GoogleCalcEqualsBg,
+          fontWeight = FontWeight.SemiBold
+        )
+      }
+    }
+  )
+}
+
+@Composable
+private fun HistoryDialog(
+  history: List<HistoryItem>,
+  onSelectHistory: (HistoryItem) -> Unit,
+  onClearHistory: () -> Unit,
+  onDismiss: () -> Unit
+) {
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    containerColor = GoogleCalcFunctionBg,
+    title = {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "History",
+          fontWeight = FontWeight.SemiBold,
+          fontSize = 20.sp,
+          color = Color.White,
+          fontFamily = FontFamily.SansSerif
+        )
+        if (history.isNotEmpty()) {
+          IconButton(
+            onClick = onClearHistory,
+            modifier = Modifier.testTag("btn_clear_history")
+          ) {
+            Icon(
+              imageVector = Icons.Outlined.DeleteOutline,
+              contentDescription = "Clear History",
+              tint = GoogleCalcFormulaText
+            )
+          }
+        }
+      }
+    },
+    text = {
+      if (history.isEmpty()) {
+        Column(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.Center
+        ) {
+          Icon(
+            imageVector = Icons.Outlined.History,
+            contentDescription = null,
+            tint = GoogleCalcFormulaText.copy(alpha = 0.6f),
+            modifier = Modifier.size(48.dp)
+          )
+          Spacer(modifier = Modifier.height(12.dp))
+          Text(
+            text = "No history yet",
+            fontSize = 16.sp,
+            color = GoogleCalcFormulaText,
+            fontFamily = FontFamily.SansSerif
+          )
+        }
+      } else {
+        LazyColumn(
+          modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 380.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+          items(history, key = { it.id }) { item ->
+            Surface(
+              modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .clickable {
+                  onSelectHistory(item)
+                  onDismiss()
+                }
+                .testTag("history_item_${item.id}"),
+              color = GoogleCalcNumberBg,
+              shape = RoundedCornerShape(12.dp)
+            ) {
+              Column(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 14.dp, vertical = 10.dp)
+              ) {
+                Text(
+                  text = item.time,
+                  fontSize = 12.sp,
+                  color = GoogleCalcFormulaText,
+                  fontFamily = FontFamily.SansSerif
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  text = "${item.equation} =",
+                  fontSize = 16.sp,
+                  color = GoogleCalcFormulaText,
+                  fontFamily = FontFamily.SansSerif,
+                  textAlign = TextAlign.End,
+                  modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  text = item.result,
+                  fontSize = 22.sp,
+                  fontWeight = FontWeight.SemiBold,
+                  color = Color.White,
+                  fontFamily = FontFamily.SansSerif,
+                  textAlign = TextAlign.End,
+                  modifier = Modifier.fillMaxWidth()
+                )
+              }
+            }
+          }
+        }
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = onDismiss,
+        modifier = Modifier.testTag("btn_close_history")
+      ) {
+        Text(
+          text = "Close",
           color = GoogleCalcEqualsBg,
           fontWeight = FontWeight.SemiBold
         )

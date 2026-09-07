@@ -158,4 +158,30 @@ class CalculatorUiTest {
     composeTestRule.onNodeWithTag("btn_settings").performClick()
     composeTestRule.onNodeWithTag("switch_vibration").assertIsOff()
   }
+
+  @Test
+  fun testHistoryDialog() {
+    composeTestRule.setContent {
+      MyApplicationTheme {
+        CalculatorScreen()
+      }
+    }
+
+    // Top-left settings and top-right history should be displayed in the corners
+    composeTestRule.onNodeWithTag("btn_settings").assertIsDisplayed()
+    composeTestRule.onNodeWithTag("btn_history").assertIsDisplayed()
+
+    // Perform calculation 7 x 6 = 42
+    composeTestRule.onNodeWithTag("btn_7").performClick()
+    composeTestRule.onNodeWithTag("btn_multiply").performClick()
+    composeTestRule.onNodeWithTag("btn_6").performClick()
+    composeTestRule.onNodeWithTag("btn_equals").performClick()
+    composeTestRule.onNodeWithTag("display_text").assertTextEquals("42")
+
+    // Open history dialog
+    composeTestRule.onNodeWithTag("btn_history").performClick()
+
+    // Close button should be displayed
+    composeTestRule.onNodeWithTag("btn_close_history").assertIsDisplayed().performClick()
+  }
 }

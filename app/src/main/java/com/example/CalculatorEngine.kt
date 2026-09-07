@@ -44,6 +44,16 @@ class CalculatorEngine {
     state = initialState
   }
 
+  fun loadValue(value: String): CalculatorState {
+    state = state.copy(
+      display = value,
+      isTyping = false,
+      isOperatorActive = false,
+      isError = false
+    )
+    return state
+  }
+
   fun onDigit(digit: Char): CalculatorState {
     if (state.isError) {
       state = CalculatorState(display = digit.toString(), isTyping = true)
