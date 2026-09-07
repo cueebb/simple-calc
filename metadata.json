@@ -1,0 +1,6 @@
+{
+  "name": "Calculator",
+  "description": "Material Design 3 calculator with iOS-style features, gesture swipe-to-delete, and repeat operations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
