@@ -5,17 +5,19 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val DarkColorScheme = darkColorScheme(
-  primary = PrimaryOrange,
-  onPrimary = OnPrimaryOrange,
-  surface = CalcBackgroundDark,
-  onSurface = OnSurfaceDark,
-  background = CalcBackgroundDark,
-  onBackground = OnSurfaceDark,
-  surfaceVariant = CalcNumberButtonDark,
-  onSurfaceVariant = CalcNumberTextDark,
-  secondaryContainer = CalcFunctionButtonDark,
-  onSecondaryContainer = CalcFunctionTextDark
+private val GoogleCalcColorScheme = darkColorScheme(
+  primary = GoogleCalcEqualsBg,
+  onPrimary = GoogleCalcEqualsText,
+  surface = GoogleCalcBackground,
+  onSurface = GoogleCalcNumberText,
+  background = GoogleCalcBackground,
+  onBackground = GoogleCalcNumberText,
+  surfaceVariant = GoogleCalcNumberBg,
+  onSurfaceVariant = GoogleCalcFormulaText,
+  secondaryContainer = GoogleCalcOperatorBg,
+  onSecondaryContainer = GoogleCalcOperatorText,
+  tertiaryContainer = GoogleCalcFunctionBg,
+  onTertiaryContainer = GoogleCalcFunctionText
 )
 
 @Composable
@@ -23,7 +25,7 @@ fun MyApplicationTheme(
   content: @Composable () -> Unit
 ) {
   MaterialTheme(
-    colorScheme = DarkColorScheme,
+    colorScheme = GoogleCalcColorScheme,
     typography = Typography,
     content = content
   )

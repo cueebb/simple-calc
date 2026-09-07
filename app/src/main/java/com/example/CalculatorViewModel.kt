@@ -8,16 +8,20 @@ import kotlinx.coroutines.flow.update
 
 data class CalculatorUiState(
   val displayText: String = "0",
+  val formulaText: String = "",
   val rawDisplay: String = "0",
   val activeOperator: Operator? = null,
   val isAllClear: Boolean = true,
-  val isError: Boolean = false
+  val isError: Boolean = false,
+  val isVibrationEnabled: Boolean = true
 )
 
 class CalculatorViewModel(
-  private val engine: CalculatorEngine = CalculatorEngine()
+  private val engine: CalculatorEngine = CalculatorEngine(),
+  private val settingsManager: SettingsManager? = null
 ) : ViewModel() {
 
+  private var isVibration: Boolean = settingsManager?.isVibrationEnabled ?: true
   private val _uiState = MutableStateFlow(createUiState(engine.getState()))
   val uiState: StateFlow<CalculatorUiState> = _uiState.asStateFlow()
 
@@ -56,13 +60,21 @@ class CalculatorViewModel(
     _uiState.update { createUiState(state) }
   }
 
+  fun setVibrationEnabled(enabled: Boolean) {
+    isVibration = enabled
+    settingsManager?.isVibrationEnabled = enabled
+    _uiState.update { it.copy(isVibrationEnabled = enabled) }
+  }
+
   private fun createUiState(state: CalculatorState): CalculatorUiState {
     return CalculatorUiState(
       displayText = engine.formatDisplayForUi(state.display),
+      formulaText = state.formula,
       rawDisplay = state.display,
       activeOperator = if (state.isOperatorActive) state.pendingOperator else null,
       isAllClear = state.isAllClear,
-      isError = state.isError
+      isError = state.isError,
+      isVibrationEnabled = isVibration
     )
   }
 }

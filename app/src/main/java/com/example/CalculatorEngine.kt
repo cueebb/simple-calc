@@ -9,7 +9,7 @@ import java.util.Locale
 
 enum class Operator(val symbol: String) {
   ADD("+"),
-  SUBTRACT("-"),
+  SUBTRACT("−"),
   MULTIPLY("×"),
   DIVIDE("÷"),
   POWER("^")
@@ -22,6 +22,7 @@ data class RepeatAction(
 
 data class CalculatorState(
   val display: String = "0",
+  val formula: String = "",
   val storedValue: BigDecimal? = null,
   val pendingOperator: Operator? = null,
   val isOperatorActive: Boolean = false,
@@ -55,7 +56,6 @@ class CalculatorEngine {
     } else if (currentDisplay == "-0") {
       "-$digit"
     } else {
-      // Limit to 10 significant digits
       val rawDigits = currentDisplay.replace("-", "").replace(".", "")
       if (rawDigits.length >= 10) {
         currentDisplay
@@ -64,8 +64,17 @@ class CalculatorEngine {
       }
     }
 
+    val updatedFormula = if (state.storedValue != null && state.pendingOperator != null) {
+      "${formatDisplayForUi(formatResult(state.storedValue!!))} ${state.pendingOperator!!.symbol}"
+    } else if (!state.isTyping && state.lastAction != null) {
+      ""
+    } else {
+      state.formula
+    }
+
     state = state.copy(
       display = newDisplay,
+      formula = updatedFormula,
       isTyping = true,
       isOperatorActive = false,
       isError = false
@@ -87,8 +96,17 @@ class CalculatorEngine {
       state.display
     }
 
+    val updatedFormula = if (state.storedValue != null && state.pendingOperator != null) {
+      "${formatDisplayForUi(formatResult(state.storedValue!!))} ${state.pendingOperator!!.symbol}"
+    } else if (!state.isTyping && state.lastAction != null) {
+      ""
+    } else {
+      state.formula
+    }
+
     state = state.copy(
       display = newDisplay,
+      formula = updatedFormula,
       isTyping = true,
       isOperatorActive = false,
       isError = false
@@ -101,7 +119,6 @@ class CalculatorEngine {
 
     val currentNum = parseDisplay(state.display)
 
-    // If user previously entered an operator and was typing, calculate intermediate result
     if (state.storedValue != null && state.pendingOperator != null && state.isTyping) {
       val result = calculate(state.storedValue!!, currentNum, state.pendingOperator!!)
       if (result == null) {
@@ -109,8 +126,10 @@ class CalculatorEngine {
         return state
       }
       val formattedResult = formatResult(result)
+      val newFormula = "${formatDisplayForUi(formattedResult)} ${operator.symbol}"
       state = state.copy(
         display = formattedResult,
+        formula = newFormula,
         storedValue = result,
         pendingOperator = operator,
         isOperatorActive = true,
@@ -118,9 +137,10 @@ class CalculatorEngine {
         lastAction = RepeatAction(state.pendingOperator!!, currentNum)
       )
     } else {
-      // Operator selected or changed
+      val newFormula = "${formatDisplayForUi(formatResult(currentNum))} ${operator.symbol}"
       state = state.copy(
         storedValue = currentNum,
+        formula = newFormula,
         pendingOperator = operator,
         isOperatorActive = true,
         isTyping = false,
@@ -136,7 +156,6 @@ class CalculatorEngine {
     val currentNum = parseDisplay(state.display)
 
     if (state.storedValue != null && state.pendingOperator != null) {
-      // Standard calculation: storedValue [pendingOperator] currentNum
       val op = state.pendingOperator!!
       val result = calculate(state.storedValue!!, currentNum, op)
       if (result == null) {
@@ -144,8 +163,10 @@ class CalculatorEngine {
         return state
       }
       val formatted = formatResult(result)
+      val newFormula = "${formatDisplayForUi(formatResult(state.storedValue!!))} ${op.symbol} ${formatDisplayForUi(formatResult(currentNum))} ="
       state = state.copy(
         display = formatted,
+        formula = newFormula,
         storedValue = null,
         pendingOperator = null,
         isOperatorActive = false,
@@ -153,7 +174,6 @@ class CalculatorEngine {
         lastAction = RepeatAction(op, currentNum)
       )
     } else if (state.lastAction != null) {
-      // Repeat last action on current display value!
       val (op, operand) = state.lastAction!!
       val result = calculate(currentNum, operand, op)
       if (result == null) {
@@ -161,16 +181,17 @@ class CalculatorEngine {
         return state
       }
       val formatted = formatResult(result)
+      val newFormula = "${formatDisplayForUi(formatResult(currentNum))} ${op.symbol} ${formatDisplayForUi(formatResult(operand))} ="
       state = state.copy(
         display = formatted,
+        formula = newFormula,
         storedValue = null,
         pendingOperator = null,
         isOperatorActive = false,
         isTyping = false,
-        lastAction = RepeatAction(op, operand) // Keep repeating
+        lastAction = RepeatAction(op, operand)
       )
     } else {
-      // Nothing to calculate
       state = state.copy(
         isTyping = false,
         isOperatorActive = false
@@ -198,14 +219,12 @@ class CalculatorEngine {
   }
 
   fun onClear(): CalculatorState {
-    // If typing and display != 0, C clears entry back to 0 but keeps pending operator & storedValue
     if (state.isTyping && state.display != "0") {
       state = state.copy(
         display = "0",
         isTyping = false
       )
     } else {
-      // All Clear (AC)
       state = CalculatorState()
     }
     return state
@@ -282,21 +301,17 @@ class CalculatorEngine {
     val stripped = value.stripTrailingZeros()
     val plain = stripped.toPlainString()
 
-    // If fits within 10 characters, display plain
     if (plain.length <= 10 && !plain.contains("E") && !plain.contains("e")) {
       return plain
     }
 
-    // Check if number is extremely large or small
     val absValue = value.abs()
     if ((absValue >= BigDecimal("1e10") || (absValue > BigDecimal.ZERO && absValue < BigDecimal("1e-6")))) {
-      // Use scientific notation
       val symbols = DecimalFormatSymbols(Locale.US)
       val formatter = DecimalFormat("0.######E0", symbols)
       return formatter.format(value.toDouble()).lowercase()
     }
 
-    // Format with max 8 decimal places
     val mc = MathContext(10, RoundingMode.HALF_UP)
     val rounded = value.round(mc).stripTrailingZeros()
     val roundedPlain = rounded.toPlainString()
@@ -319,7 +334,6 @@ class CalculatorEngine {
     val hasDecimal = clean.contains(".")
     val decimalPart = if (parts.size > 1) parts[1] else ""
 
-    // Format integer part with commas
     val formattedInteger = try {
       val symbols = DecimalFormatSymbols(Locale.US)
       val df = DecimalFormat("#,###", symbols)

@@ -1,6 +1,8 @@
 package com.example
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -129,5 +131,31 @@ class CalculatorUiTest {
 
     composeTestRule.onNodeWithTag("btn_5").performClick()
     composeTestRule.onNodeWithTag("display_text").assertTextEquals("0.5")
+  }
+
+  @Test
+  fun testSettingsDialogAndVibrationToggle() {
+    composeTestRule.setContent {
+      MyApplicationTheme {
+        CalculatorScreen()
+      }
+    }
+
+    // Open settings from top-left button
+    composeTestRule.onNodeWithTag("btn_settings").assertIsDisplayed().performClick()
+
+    // Vibration switch should be visible and initially ON
+    composeTestRule.onNodeWithTag("switch_vibration").assertIsDisplayed().assertIsOn()
+
+    // Toggle OFF
+    composeTestRule.onNodeWithTag("switch_vibration").performClick()
+    composeTestRule.onNodeWithTag("switch_vibration").assertIsOff()
+
+    // Close settings dialog
+    composeTestRule.onNodeWithTag("btn_close_settings").assertIsDisplayed().performClick()
+
+    // Reopen settings dialog and verify state persisted
+    composeTestRule.onNodeWithTag("btn_settings").performClick()
+    composeTestRule.onNodeWithTag("switch_vibration").assertIsOff()
   }
 }
